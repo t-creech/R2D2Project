@@ -10,7 +10,7 @@
 #   6. Save the figures and summary statistics to the output directory
 
 # Usage:
-#   Rscript 02_eda.R <gambia_csv> <out_dir>
+#   Rscript 02_eda.R <gambia_csv> <breast_tumors_csv> <out_dir>
 
 
 # Arguments:
@@ -18,13 +18,15 @@
 #   - out_dir: Directory to save the output figures and summary statistics
 
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 2) {
-  stop("Usage: Rscript 01_eda.R <gambia_csv> <out_dir>")
+if (length(args) != 3) {
+  stop("Usage: Rscript 01_eda.R <gambia_csv> <breast_tumors_csv> <out_dir>")
 }
 
-csv_path <- args[1]
-out_dir <- args[2]
+gambia_path <- args[1]
+breast_tumors_path <- args[2]
+out_dir <- args[3]
 if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 
 # Load the data
-df <- read.csv(csv_path, stringsAsFactors = FALSE)
+df_gambia <- read.csv(gambia_path, stringsAsFactors = FALSE)
+df_breast_tumors <- read.csv(breast_tumors_path, stringsAsFactors = FALSE)

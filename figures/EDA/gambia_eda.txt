@@ -1,0 +1,46 @@
+=== Gambia: Missing Values ===
+      x       y     pos     age  netuse treated   green     phc 
+      0       0       0       0       0       0       0       0 
+
+=== Gambia: Dimensions (rows, columns) ===
+[1] 2035    8
+
+=== Gambia: Column Classes ===
+        x         y       pos       age    netuse   treated     green       phc 
+"numeric" "integer" "integer" "integer" "integer" "integer" "numeric" "integer" 
+
+=== Gambia: Summary() Output ===
+       x                y                pos              age      
+ Min.   :349631   Min.   :1458055   Min.   :0.0000   Min.   : 341  
+ 1st Qu.:381772   1st Qu.:1471011   1st Qu.:0.0000   1st Qu.: 708  
+ Median :506400   Median :1482908   Median :0.0000   Median :1091  
+ Mean   :490537   Mean   :1483355   Mean   :0.3572   Mean   :1080  
+ 3rd Qu.:594610   3rd Qu.:1496919   3rd Qu.:1.0000   3rd Qu.:1438  
+ Max.   :622086   Max.   :1510610   Max.   :1.0000   Max.   :1856  
+     netuse          treated           green            phc        
+ Min.   :0.0000   Min.   :0.0000   Min.   :28.85   Min.   :0.0000  
+ 1st Qu.:0.0000   1st Qu.:0.0000   1st Qu.:40.85   1st Qu.:0.0000  
+ Median :1.0000   Median :0.0000   Median :45.50   Median :1.0000  
+ Mean   :0.7111   Mean   :0.2757   Mean   :46.90   Mean   :0.6835  
+ 3rd Qu.:1.0000   3rd Qu.:1.0000   3rd Qu.:52.25   3rd Qu.:1.0000  
+ Max.   :1.0000   Max.   :1.0000   Max.   :58.95   Max.   :1.0000  
+
+=== Gambia: Numeric Correlations ===
+                   x           y         pos         age      netuse
+x        1.000000000  0.10169421  0.16633694  0.05490264 -0.12225319
+y        0.101694215  1.00000000 -0.11849341 -0.04071486 -0.07655133
+pos      0.166336940 -0.11849341  1.00000000  0.13347089 -0.16954032
+age      0.054902645 -0.04071486  0.13347089  1.00000000 -0.04408092
+netuse  -0.122253189 -0.07655133 -0.16954032 -0.04408092  1.00000000
+treated  0.000978876  0.12909604 -0.12028981 -0.02023920  0.39326662
+green    0.830494581  0.03584824  0.15318948  0.05074325 -0.13028608
+phc      0.075399740 -0.03635339 -0.07481672  0.05069491  0.07440519
+             treated       green         phc
+x        0.000978876  0.83049458  0.07539974
+y        0.129096039  0.03584824 -0.03635339
+pos     -0.120289808  0.15318948 -0.07481672
+age     -0.020239195  0.05074325  0.05069491
+netuse   0.393266621 -0.13028608  0.07440519
+treated  1.000000000  0.01626194  0.41740620
+green    0.016261942  1.00000000 -0.04111653
+phc      0.417406201 -0.04111653  1.00000000

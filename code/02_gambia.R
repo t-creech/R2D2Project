@@ -239,7 +239,7 @@ for (i in 1:length(a_list)){
     }
 
     # Remove burn-in samples
-    keep <- (burn_in+1):iters
+    keep <- (burn_in+1):iterations
     post_beta  <- draws$beta[keep,]
     post_beta0 <- draws$beta0[keep]
     post_W     <- W_from_V(draws$V[keep], params)

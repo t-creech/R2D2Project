@@ -5,15 +5,16 @@
 #   1. Read the data
 #   2. Perform analysis
 #   3. Plot figures and create tables
-#   6. Save the figures and tables to the output directory
+#   4. Save the figures and tables to the output directory
 
 # Usage:
-#   Rscript 04_figures.R <gambia> <breast_tumors> <out_dir>
+#   Rscript 04_figures.R <gambia> <breast_tumors> <seed> <out_dir>
 
 
 # Arguments:
 #   - gambia: Data file containing the data
 #   - breast_tumors: Data file containing the breast tumors data
+#   - seed: Random seed for reproducibility
 #   - out_dir: Directory to save the output figures and summary statistics
 
 # Load required libraries
@@ -24,13 +25,17 @@ library(patchwork)
 source("code/01_prior_construction.R")
 
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 3) {
-  stop("Usage: Rscript eda.R <gambia> <breast_tumors> <out_dir>")
+if (length(args) != 4) {
+  stop("Usage: Rscript 04_figures.R <gambia> <breast_tumors> <seed> <out_dir>")
 }
 gambia <- args[1]
 breast_tumors <- args[2]
-out_dir <- args[3]
+seed <- as.numeric(args[3])
+out_dir <- args[4]
 if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+# Set the seed for reproducibility
+set.seed(seed)
 
 ## Figure 1: Prior distributions of W to induce R2 ~ Beta(a, b) with B_0 = 0
 a <- c(1, 4)

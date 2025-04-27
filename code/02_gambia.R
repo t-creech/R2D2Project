@@ -117,8 +117,8 @@ for (i in 1:length(a_list)){
     params <- match_gbp(a, b, beta0 = beta0_init, family = "binomial")
 
     # Metropolis-Hastings sampler
-    iterations <- 105000
-    burn_in <- 5000
+    iterations <- 20000
+    burn_in <- 2500
     adapt_interval <- 200
     p <- ncol(X)
     L <- length(unique(s.ind))

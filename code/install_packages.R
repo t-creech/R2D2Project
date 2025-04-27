@@ -13,12 +13,7 @@ if (!requireNamespace("stats", quietly = TRUE)) {
   install.packages("stats", repos = "https://cloud.r-project.org")
 }
 
-# Install cubature package if not already installed
-if (!requireNamespace("cubature", quietly = TRUE)) {
-  install.packages("cubature", repos = "https://cloud.r-project.org")
-}
-
-# Install numDeriv package if not already installed
-if (!requireNamespace("numDeriv", quietly = TRUE)) {
-  install.packages("numDeriv", repos = "https://cloud.r-project.org")
+# Install patchwork package if not already installed
+if (!requireNamespace("patchwork", quietly = TRUE)) {
+  install.packages("patchwork", repos = "https://cloud.r-project.org")
 }

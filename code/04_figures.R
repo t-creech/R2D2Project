@@ -12,7 +12,7 @@
 
 
 # Arguments:
-#   - gambia: Data file containing the data
+#   - gambia: Directory of RDS files containing the data
 #   - breast_tumors: Data file containing the breast tumors data
 #   - seed: Random seed for reproducibility
 #   - out_dir: Directory to save the output figures and summary statistics
@@ -338,4 +338,52 @@ write.csv(
     gbp_params,
     file = file.path(out_dir, "Table1_gbp_params.csv"),
     row.names = FALSE
+)
+
+## Figure 4: Posterior distributions of W for Gambia data
+# Create a data frame for the posterior distributions
+gambia_df <- data.frame()
+# Determine the number of gambia runs
+gambia_runs <- length(list.files(gambia, pattern = "gambia_"))
+seed <- 1234
+a <- c(0.5, 1, 1, 4, 4)
+b <- c(0.5, 1, 4, 1, 4)
+
+for i in (1:gambia_runs){
+    # Load the MCMC samples
+    mcmc_samples <- readRDS(file.path(gambia, paste0("gambia_", a[i], "_", b[i], "_", seed, ".rds")))
+  
+    # Extract the posterior samples for W
+    w_samples <- mcmc_samples$W_draws
+    rho_samples <- mcmc_samples$rho_draws
+    a <- mcmc_samples$a
+    b <- mcmc_samples$b
+  
+    # Create a data frame for the posterior samples
+    temp_df <- data.frame(
+        W = w_samples,
+        rho = rho_samples,
+        a = a,
+        b = b
+    )
+  
+    # Append to the main data frame
+    gambia_df <- rbind(gambia_df, temp_df)
+}
+
+# Create a new column for R^2
+gambia_df$R2 <- W_to_R2(gambia_df$W, beta0 = -0.059, family = "binomial")
+
+# Create a new column for RE Var
+gambia_df$RE_Var <- gambia_df$W * gambia_df$rho
+
+# Create the plot of posterior distributions
+
+
+# Save to file
+ggsave(
+  filename = file.path(out_dir, "Figure4_posterior.png"),
+  plot     = gg,
+  width    = 10,
+  height   = 4
 )

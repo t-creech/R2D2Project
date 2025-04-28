@@ -19,6 +19,9 @@
 # Pull in the functions from the previous scripts
 source("code/01_prior_construction.R")
 
+# Load required libraries
+library(rjags)
+
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) != 3) {
   stop("Usage: Rscript 02_gambia.R <gambia_data> <seed> <out_dir>")
@@ -31,47 +34,15 @@ if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 # Set the seed for reproducibility
 set.seed(seed)
 
-# Define functions needed in the script
-# Logit link log-likelihood
-logit_ll <- function(y, eta){sum( y*eta - log1p(exp(eta)))}
-# Tranform W to V
-W_from_V <- function(V, params) {(V/(1-V))^(1/params[3]) * params[4]}
-# Log of prior density functions based on the paper
-log_prior_beta <- function(beta, W, phi1, p) {-0.5 * p * log(2*pi*W*phi1/p) - 0.5 * (p/(W*phi1)) * sum(beta^2)}
-log_prior_beta0 <- function(beta0, mu0, tau2) {-0.5 * ((beta0 - mu0)^2) / tau2 - 0.5 * log(2 * pi * tau2)}
-log_prior_u <- function(u, W, phi2, C) {
-    L <- length(u)
-    Q <- solve(C)
-    quad <- t(u) %*% Q %*% u
-    -0.5 * (L*log(2*pi*W*phi2) + log(det(C)) + quad/(W*phi2))
-}
-log_prior_phi <- function(phi, xi = c(1,1)){
-  if(any(phi <= 0) || abs(sum(phi)-1) > 1e-10) return(-Inf)
-  lgamma(sum(xi)) - sum(lgamma(xi)) +
-    sum( (xi-1) * log(phi) )
-}
-log_prior_rho <- function(rho, r) {
-    if (rho < 0 || rho > 2 * r) {
-        return(-Inf)
-    } else {
-        return(-log(2 * r))
-    }
-}
-log_prior_W <- function(W, a_star, b_star,c_star, d_star) {
-    dens <- dgbp(W, a_star, b_star, c_star, d_star)
-    return(log(dens))
-}
-
 # Read the Gambia data
 gambia_data <- read.csv(gambia, header = TRUE)
 
 # Transform the data as needed
 Y <- gambia_data$pos
-X <- scale(gambia_data[, c(1, 2, 4:8)]) # Scale the covariates
+X <- scale(gambia_data[,c(1,2,4:8)])
 
 # Create the random effects
 s.ind <- numeric(length(Y))
-
 for(i in 1:65){
   for(j in 1:length(Y)){
     if(X[j,2]==unique(X[,2])[i]){
@@ -80,12 +51,10 @@ for(i in 1:65){
   }
 }
 
-# Create spatial correlation matrix
+## Create spatial correlation matrix
 X.loc <- unique(X[,1:2])
-
-# Max distance
-D_mat <- as.matrix(dist(X.loc))
-r <- max(D_mat)
+r <- 0.986
+cat("Max distance:", r, "\n")
 
 # Drop locations
 X <- X[,-(1:2)]
@@ -93,167 +62,92 @@ X <- X[,-(1:2)]
 n=length(Y) # number of data points
 p=ncol(X) # number of fixed effects
 q=1 # number of random effects
-L=length(unique(s.ind))
-
-# Determine mean Y
-mean_y <- mean(Y)
-
-# Logit link Y
-logit_y <- log(Y / (1 - Y))
+L=length(unique(s.ind)) # number of locations
+mean_Y <- mean(Y)
+# Calculate Beta0 from the mean of Y
+beta0 <- log(mean_Y/(1-mean_Y))
+cat("Beta0:", beta0, "\n")
 
 # Create the list of a b pairs to test
 a_list <- c(0.5, 1, 1, 4, 4)
 b_list <- c(0.5, 1, 4, 1, 4)
+iterations <- 40000
+burn_in <- 2500
 
-# Determine the parameters for the GBM prior
-beta0_init <- qlogis(mean_y)
-
-for (i in 1:length(a_list)){
+for (h in 1:length(a_list)){
+    cat("Starting sampling: a:", a_list[h], "b:", b_list[h], "\n")
     # Create the prior parameters
-    a <- a_list[i]
-    b <- b_list[i]
+    a <- a_list[h]
+    b <- b_list[h]
 
     # Determine parameters 
-    params <- match_gbp(a, b, beta0 = beta0_init, family = "binomial")
+    params <- match_gbp(a, b, beta0 = beta0, family = "binomial")
 
-    # Metropolis-Hastings sampler
-    iterations <- 20000
-    burn_in <- 2500
-    adapt_interval <- 200
-    p <- ncol(X)
-    L <- length(unique(s.ind))
+    # Run code in JAGS copying the original code
+    data = list(Y=Y, X=X, n=n, p=ncol(X), s.ind = s.ind, L=length(unique(s.ind)),
+            X.loc = X.loc, params = params, r=r)
 
-    # Create storage for the parameters
-    draws <- list(beta = matrix(NA, iterations, p),
-                beta0 = numeric(iterations),
-                V = numeric(iterations),
-                phi = matrix(NA, iterations, 2),
-                rho = numeric(iterations),
-                u = matrix(NA, iterations, L))
+    model_string <- textConnection("model{
 
-    # Set the initial values
-    beta <- rep(0, p)
-    beta0 <- 0
-    V <- 0.5
-    phi <- c(0.5, 0.5)
-    rho <- runif(1, 0, 2 * r)
-    Cmatrix <- exp(-D_mat / rho)
-    u <- rep(0, L)
-
-    # Set proposal standard deviations
-    sd_beta <- rep(0.01, p)
-    sd_beta0 <- 0.05
-    sd_logV <- 0.2
-    sd_logphi <- rep(0.2, 2)
-    sd_logrho <- 0.05
-
-    # Function to calculate the log posterior
-    log_post <- function(beta, beta0, mu0, tau2, u, V, phi, rho, params, X, Y, X.loc, s.ind, r, D_mat) {
-    W <- W_from_V(V,params)
-    C <- exp(-D_mat/rho)
-    eta <- beta0 + X %*% beta + u[s.ind]
-    p <- length(beta)
-    ll <- logit_ll(Y, eta)
-    lp <- log_prior_beta(beta,W,phi[1], p) +
-            log_prior_beta0(beta0, mu0, tau2) +
-            log_prior_u(u,W,phi[2],C) +
-            log_prior_phi(phi) +
-            log_prior_W(W, params[1], params[2], params[3], params[4]) +
-            log_prior_rho(rho,r)
-    ll + lp
+    ##Likelihood
+    for(i in 1:n){
+    Y[i] ~ dbern(1/(1+exp(-mu[i]-alpha[s.ind[i]])))
+    mu[i] <- beta0 + inprod(X[i,],beta[])
     }
 
-    # Initialize the log posterior
-    cur_lp <- log_post(beta, beta0, mu0 = 0, tau2 = 3, u, V, phi, rho, params, X, Y, X.loc, s.ind, r, D_mat)
+    alpha[1:L] ~ dmnorm.vcov(zero[1:L], dd[2]*W*C[1:L,1:L])
 
-    # Performing iterations of algorithm using adaptive M-H
-    for (i in 2:iterations) {
-        # Update beta
-        for(j in 1:p){
-            prop <- beta
-            prop[j] <- prop[j] + rnorm(1,0,sd_beta[j])
-            lp_prop <- log_post(prop, beta0, mu0 = 0, tau2 = 3, u, V, phi, rho, params, X, Y, X.loc, s.ind, r, D_mat)
-            if(runif(1)<exp(lp_prop - cur_lp)){
-            beta <- prop
-            cur_lp <- lp_prop
-            }
-        }
-        # Update beta0
-        prop_b0 <- beta0 + rnorm(1,0,sd_beta0)
-        lp_prop <- log_post(beta, prop_b0, mu0 = 0, tau2 = 3, u, V, phi, rho, params, X, Y, X.loc, s.ind, r, D_mat)
-        if(runif(1)<exp(lp_prop - cur_lp)){
-            beta0 <- prop_b0
-            cur_lp <- lp_prop
-        }
-        # Update V
-        prop_logitV <- qlogis(V) + rnorm(1, 0, sd_logV)
-        prop_V <- plogis(prop_logitV)
-        lp_prop <- log_post(beta, beta0, mu0 = 0, tau2 = 3, u, prop_V, phi, rho, params, X, Y, X.loc, s.ind, r, D_mat) + sum(log(prop_V) + log(1-prop_V))
-        if(runif(1)<exp(lp_prop-cur_lp)){
-            V <- prop_V
-            cur_lp <- lp_prop 
-        }
-        # Update phi
-        logit_phi <- qlogis(phi)
-        prop_logit <- logit_phi + rnorm(2,0,sd_logphi)
-        prop_phi   <- plogis(prop_logit)
-        prop_phi   <- prop_phi / sum(prop_phi)
-        lp_prop <- log_post(beta, beta0, mu0 = 0, tau2 = 3, u, V, prop_phi, rho, params, X, Y, X.loc, s.ind, r, D_mat) + sum(log(prop_phi) + log(1-prop_phi))
-        if(runif(1)<exp(lp_prop-cur_lp)){
-            phi<-prop_phi
-            cur_lp<-lp_prop 
-        }
-        # Update rho
-        prop_logrho <- log(rho) + rnorm(1,0,sd_logrho)
-        prop_rho <- exp(prop_logrho)
-        lp_prop <- log_post(beta, beta0, mu0 = 0, tau2 = 3, u, V, phi, prop_rho, params, X, Y, X.loc, s.ind, r, D_mat) + log(prop_rho)
-        if(runif(1)<exp(lp_prop-cur_lp)){
-            rho<-prop_rho
-            cur_lp<-lp_prop 
-        }
-        # Update u
-        C <- exp(-D_mat/rho)
-        W <- W_from_V(V,params)
-        Sigma_a <- W * phi[2] * C
-        Q <- solve(Sigma_a)
-        z_vec   <- Y - 0.5 - (beta0 + X%*%beta)
+    ## Create correlation matrix
 
-        # Build vector of summed residuals by village
-        g <- rowsum(z_vec, s.ind, reorder = FALSE)
-
-        # Posterior precision and mean
-        Prec <- Q + diag(as.numeric(table(s.ind)))
-        cholP <- chol(Prec)
-        mean_u <- solve(Prec, g)
-        u <- mean_u + backsolve(cholP, rnorm(L))
-        cur_lp <- log_post(beta, beta0, mu0 = 0, tau2 = 3, u, V, phi, rho, params, X, Y, X.loc, s.ind, r, D_mat)
-
-        # Store the samples
-        draws$beta[i, ] <- beta
-        draws$beta0[i] <- beta0
-        draws$V[i] <- V
-        draws$phi[i, ] <- phi
-        draws$rho[i] <- rho
-        draws$u[i, ] <- u
-
+    for(i in 1:L){
+    C[i,i] <- 1
+    zero[i] <- 0
     }
 
-    # Remove burn-in samples
-    keep <- (burn_in+1):iterations
-    post_beta  <- draws$beta[keep,]
-    post_beta0 <- draws$beta0[keep]
-    post_W     <- W_from_V(draws$V[keep], params)
-    post_rho   <- draws$rho [keep]
+    for(i in 1:(L-1)){
+    for(j in (i+1):L){
+        
+        C[i,j] <- exp(-sqrt((X.loc[i,1] - X.loc[j,1])^2 + (X.loc[i,2] - X.loc[j,2])^2)/rho)
+        C[j,i] <- exp(-sqrt((X.loc[i,1] - X.loc[j,1])^2 + (X.loc[i,2] - X.loc[j,2])^2)/rho)
+    }
+    }
+
+    ##Priors
+
+    V ~ dbeta(params[1], params[2])
+    W <- (V/(1-V))^(1/params[3])*params[4]
+    
+    for(i in 1:2){delta[i] <- 1}
+    dd ~ ddirch(delta)
+
+    beta0 ~ dnorm(0,1/3)
+    rho ~ dunif(0,2*r)
+    for(j in 1:p){beta[j] ~ dnorm(0, 1/(W*dd[1])/p)}
+
+    }")
+
+    inits <- list(beta=rep(0,p), alpha=rep(0,L))
+    model <- jags.model(model_string,data = data, inits=inits, n.chains=1)
+    update(model, 10000)
+    params <- c("beta", "alpha", "beta0", "W", "dd", "rho")
+    samples <- coda.samples(model,
+                        variable.names=params,
+                        n.iter=iterations)
+    
+    mat <- as.matrix(samples)
+    # Remove burn-in
+    mat <- mat[-(1:burn_in),]
 
     # Save the posterior samples to file
     outfile <- file.path(out_dir, paste0("gambia_", a, "_", b, "_", seed, ".rds"))
-    saveRDS(list(beta_draws = post_beta,
-                beta0_draws = post_beta0,
-                W_draws = post_W,
-                rho_draws = post_rho,
-                seed = seed,
-                a = a,
-                b = b),
-            file = outfile)
+    saveRDS(
+        list(
+        beta0_draws = mat[, "beta0"],
+        W_draws     = mat[, "W"],
+        dd1_draws   = mat[, "dd[1]"],
+        dd2_draws   = mat[, "dd[2]"],
+        rho_draws   = mat[, "rho"]
+        ),
+    file = outfile)
     cat("Saved", outfile, "\n")
 }

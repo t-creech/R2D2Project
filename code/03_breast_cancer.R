@@ -10,7 +10,6 @@
 # Usage:
 #   Rscript 03_breast_cancer.R <breast_cancer_data> <seed> <out_dir>
 
-
 # Arguments:
 #   - breast_cancer_data: Path to the breast cancer data file
 #   - seed: Random seed for reproducibility
@@ -51,6 +50,46 @@ binary_cross_entropy <- function(y_true, y_pred) {
   y_pred <- pmin(pmax(y_pred, eps), 1 - eps)
   -mean(y_true * log(y_pred) + (1 - y_true) * log(1 - y_pred))
 }
+
+# --------- Minimal MCMC Sampler for Logistic Regression ---------
+run_r2d2_logistic_mcmc <- function(X, y, gbp_params, n_iter = 11000, burn_in = 1000) {
+  # Minimal Metropolis-Hastings sampler for logistic regression with normal prior
+  n <- nrow(X)
+  p <- ncol(X)
+  beta <- matrix(0, nrow = n_iter, ncol = p)
+  beta0 <- numeric(n_iter)
+  # Prior: Normal(0, tau^2); set tau from gbp_params or use 1 as default
+  tau2 <- if (!is.null(gbp_params$tau2)) gbp_params$tau2 else 1
+  # Initialize
+  beta_curr <- rep(0, p)
+  beta0_curr <- 0
+  for (iter in 1:n_iter) {
+    # Propose new beta and beta0
+    beta_prop <- beta_curr + rnorm(p, 0, 0.05)
+    beta0_prop <- beta0_curr + rnorm(1, 0, 0.05)
+    # Log-likelihoods
+    eta_curr <- as.numeric(X %*% beta_curr + beta0_curr)
+    eta_prop <- as.numeric(X %*% beta_prop + beta0_prop)
+    loglike_curr <- sum(y * eta_curr - log1p(exp(eta_curr)))
+    loglike_prop <- sum(y * eta_prop - log1p(exp(eta_prop)))
+    # Log-priors (Normal)
+    logprior_curr <- sum(dnorm(beta_curr, 0, sqrt(tau2), log=TRUE)) + dnorm(beta0_curr, 0, 10, log=TRUE)
+    logprior_prop <- sum(dnorm(beta_prop, 0, sqrt(tau2), log=TRUE)) + dnorm(beta0_prop, 0, 10, log=TRUE)
+    # MH ratio
+    log_alpha <- (loglike_prop + logprior_prop) - (loglike_curr + logprior_curr)
+    if (log(runif(1)) < log_alpha) {
+      beta_curr <- beta_prop
+      beta0_curr <- beta0_prop
+    }
+    beta[iter, ] <- beta_curr
+    beta0[iter] <- beta0_curr
+  }
+  # Discard burn-in
+  beta <- beta[(burn_in+1):n_iter, , drop=FALSE]
+  beta0 <- beta0[(burn_in+1):n_iter]
+  return(list(beta = beta, beta0 = beta0))
+}
+# ---------------------------------------------------------------
 
 n_repeats <- 50
 results <- list()
@@ -115,7 +154,6 @@ for (prior_name in names(r2d2_priors)) {
     beta0_init <- qlogis(mean(y_train))
     gbp_params <- match_gbp(prior$a, prior$b, beta0 = beta0_init, family = "binomial")
     # Custom MCMC for logistic regression with GBP prior on W and Normal priors on beta
-    # You must implement or source this function; see your 02_gambia.R for reference
     mcmc <- run_r2d2_logistic_mcmc(
       X = X_train_std, y = y_train,
       gbp_params = gbp_params,

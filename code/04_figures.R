@@ -421,8 +421,7 @@ p_W <- ggplot(filter(df, stat=="W"), aes(value, colour=prior))+
     breaks = seq(0,8, by=2)
   )+
   labs(x="W")+
-  theme_bw()+
-  ggtitle("W")
+  theme_bw()
 
 p_RE <- ggplot(filter(df, stat=="RE Var"), aes(value, colour=prior))+
   geom_density()+
@@ -431,8 +430,7 @@ p_RE <- ggplot(filter(df, stat=="RE Var"), aes(value, colour=prior))+
     breaks = seq(0,8, by=2)
   )+
   labs(x="RE Var")+
-  theme_bw()+
-  ggtitle("Random-effect Var")
+  theme_bw()
 
 p_R2 <- ggplot(filter(df, stat=="R2"), aes(value, colour=prior))+
   geom_density()+
@@ -441,8 +439,7 @@ p_R2 <- ggplot(filter(df, stat=="R2"), aes(value, colour=prior))+
     breaks = seq(0.0,0.6, by=0.15)
   )+
   labs(x=expression(R^2))+
-  theme_bw()+
-  ggtitle("R²")
+  theme_bw()
 
 p_rho <- ggplot(filter(df, stat=="rho"), aes(value, colour=prior))+
   geom_density()+
@@ -451,16 +448,39 @@ p_rho <- ggplot(filter(df, stat=="rho"), aes(value, colour=prior))+
     breaks = seq(0,2.5, by=0.5)
   )+
   labs(x=expression(rho))+
-  theme_bw()+
-  ggtitle("Spatial range")
+  theme_bw()
 
 # then stitch them side by side
-combined <- (p_W | p_RE) / (p_R2 | p_rho) + plot_layout(guides="collect")
-ggsave(filename = file.path(out_dir, "Figure4_posterior1.png"), combined, width=10, height=6)
+combined <- (p_R2 | p_W) / (p_rho | p_RE) + plot_layout(guides="collect")
+ggsave(filename = file.path(out_dir, "Figure4_posterior.png"), combined, width=10, height=6)
 
 # Export the posterior samples to a CSV file
 write.csv(
     gambia_df,
     file = file.path(out_dir, "posterior_samples_gambia.csv"),
     row.names = FALSE
+)
+
+## Table 2: Summary statistics for the posterior samples
+# Create a summary table for the posterior samples
+summary_wide_df <- gambia_df %>%
+  group_by(prior) %>%
+  summarise(
+    W_mean = mean(W, na.rm = TRUE),
+    W_sd = sd(W, na.rm = TRUE),
+    RE_Var_mean = mean(RE_Var, na.rm = TRUE),
+    RE_Var_sd = sd(RE_Var, na.rm = TRUE),
+    R2_mean = mean(R2, na.rm = TRUE),
+    R2_sd = sd(R2, na.rm = TRUE),
+    rho_mean = mean(rho, na.rm = TRUE),
+    rho_sd = sd(rho, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  rename(Prior = prior)
+
+# Save the summary table to a CSV file
+write.csv(
+  summary_wide_df,
+  file      = file.path(out_dir, "Table2_Gambia_summary_statistics.csv"),
+  row.names = FALSE
 )

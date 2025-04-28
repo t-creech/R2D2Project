@@ -58,8 +58,14 @@ run_r2d2_logistic_mcmc <- function(X, y, gbp_params, n_iter = 11000, burn_in = 1
   p <- ncol(X)
   beta <- matrix(0, nrow = n_iter, ncol = p)
   beta0 <- numeric(n_iter)
-  # Prior: Normal(0, tau^2); set tau from gbp_params or use 1 as default
-  tau2 <- if (!is.null(gbp_params$tau2)) gbp_params$tau2 else 1
+  # Robustly extract tau2 from gbp_params (list or numeric)
+  if (is.list(gbp_params) && !is.null(gbp_params$tau2)) {
+    tau2 <- gbp_params$tau2
+  } else if (is.numeric(gbp_params)) {
+    tau2 <- gbp_params
+  } else {
+    tau2 <- 1
+  }
   # Initialize
   beta_curr <- rep(0, p)
   beta0_curr <- 0

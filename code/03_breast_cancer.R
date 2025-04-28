@@ -135,7 +135,7 @@ results[["Horseshoe"]] <- list(
 
 # ---- R2D2 PRIORS (GBP approximation, custom MCMC) ----
 r2d2_priors <- list(
-  "Beta(1,5)"  = list(a = 1, b = 5),
+  "Beta(1,5)" = list(a = 1, b = 5),
   "Beta(1,10)" = list(a = 1, b = 10),
   "Beta(1,20)" = list(a = 1, b = 20),
   "Beta(1,30)" = list(a = 1, b = 30)

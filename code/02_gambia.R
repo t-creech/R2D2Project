@@ -143,10 +143,10 @@ for (h in 1:length(a_list)){
     saveRDS(
         list(
         beta0_draws = mat[, "beta0"],
-        W_draws     = mat[, "W"],
-        dd1_draws   = mat[, "dd[1]"],
-        dd2_draws   = mat[, "dd[2]"],
-        rho_draws   = mat[, "rho"]
+        W_draws = mat[, "W"],
+        dd1_draws = mat[, "dd[1]"],
+        dd2_draws = mat[, "dd[2]"],
+        rho_draws = mat[, "rho"]
         ),
     file = outfile)
     cat("Saved", outfile, "\n")

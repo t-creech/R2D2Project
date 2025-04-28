@@ -13,7 +13,7 @@
 
 # Arguments:
 #   - gambia: Directory of RDS files containing the data
-#   - breast_tumors: Data file containing the breast tumors data
+#   - breast_tumors: Directory containing the breast tumors data
 #   - seed: Random seed for reproducibility
 #   - out_dir: Directory to save the output figures and summary statistics
 
@@ -482,5 +482,28 @@ summary_wide_df <- gambia_df %>%
 write.csv(
   summary_wide_df,
   file      = file.path(out_dir, "Table2_Gambia_summary_statistics.csv"),
+  row.names = FALSE
+)
+
+## Table 3: Prediction results for genomic data
+# Load the breast tumors data
+res_path <- file.path(breast_tumors, paste0("breast_cancer_results_", seed, ".rds"))
+results  <- readRDS(res_path)
+
+#Make the table
+table3 <- results %>%
+  group_by(prior) %>%
+  summarise(
+    BS    = mean(BS),
+    BS_SE = sd(BS)  / sqrt(n()),
+    BCE   = mean(BCE),
+    BCE_SE= sd(BCE) / sqrt(n())
+  ) %>%
+  rename(Method = prior)
+
+# 3) Save the table to a CSV file
+write.csv(
+  table3,
+  file      = file.path(out_dir, "Table3_BreastCancer_Prediction.csv"),
   row.names = FALSE
 )

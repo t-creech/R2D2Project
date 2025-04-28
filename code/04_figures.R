@@ -357,15 +357,16 @@ for (i in 1:gambia_runs){
     # Extract the posterior samples for W
     w_samples <- mcmc_samples$W_draws
     rho_samples <- mcmc_samples$rho_draws
-    phi2_samples <- mcmc_samples$phi2_draws
-    a <- mcmc_samples$a
-    b <- mcmc_samples$b
+    alpha_samples <- mcmc_samples$alpha_draws
+    dd2_samples <- mcmc_samples$dd2_draws
+    a <- as[i]
+    b <- bs[i]
   
     # Create a data frame for the posterior samples
     temp_df <- data.frame(
         W = w_samples,
         rho = rho_samples,
-        phi2 = phi2_samples,
+        phi2 = dd2_samples,
         a = a,
         b = b
     )
@@ -387,10 +388,8 @@ gambia_df <- gambia_df %>%
 # Create a new columns for the prior name
 gambia_df$prior <- paste0("R2D2:a=", gambia_df$a, ",b=", gambia_df$b)
 
-# Unnest the data frame
-df_unnested <- gambia_df %>% unnest(cols = c(W, RE_Var, R2, rho))
-
-df_long <- df_unnested %>%
+# Clean up the data frame
+df_long <- gambia_df %>%
   pivot_longer(
     cols      = c(W, RE_Var, R2, rho),
     names_to  = "stat",
@@ -412,40 +411,56 @@ df_long <- df_unnested %>%
     ))
   )
 
-# Plot the posterior distributions
-gg <- ggplot(df_long, aes(x = value, colour = prior)) +
-  geom_density(size = 1) +
-  facet_wrap(~ stat, scales = "free", nrow = 2) +
-  scale_colour_manual(
-    name   = "Prior",
-    values = c(
-      "R2D2:a=0.5,b=0.5" = "green",
-      "R2D2:a=1,b=1"     = "purple",
-      "R2D2:a=1,b=4"     = "orange",
-      "R2D2:a=4,b=1"     = "yellow",
-      "R2D2:a=4,b=4"     = "brown"
-    )
-  ) +
-  labs(x = NULL, y = "Density") +
-  theme_bw(base_size = 14) +
-  theme(
-    strip.background   = element_blank(),
-    strip.text         = element_text(face = "bold", size = 16),
-    legend.position    = "bottom",
-    legend.title.align = 0.5
-  )
+df <- df_long
 
-# Save to file
-ggsave(
-  filename = file.path(out_dir, "Figure4_posterior.png"),
-  plot     = gg,
-  width    = 10,
-  height   = 5
-)
+# Plot the posterior distributions
+p_W <- ggplot(filter(df, stat=="W"), aes(value, colour=prior))+
+  geom_density()+
+  scale_x_continuous(
+    limits = c(0,8),
+    breaks = seq(0,8, by=2)
+  )+
+  labs(x="W")+
+  theme_bw()+
+  ggtitle("W")
+
+p_RE <- ggplot(filter(df, stat=="RE Var"), aes(value, colour=prior))+
+  geom_density()+
+  scale_x_continuous(
+    limits = c(0,8),
+    breaks = seq(0,8, by=2)
+  )+
+  labs(x="RE Var")+
+  theme_bw()+
+  ggtitle("Random-effect Var")
+
+p_R2 <- ggplot(filter(df, stat=="R2"), aes(value, colour=prior))+
+  geom_density()+
+  scale_x_continuous(
+    limits = c(0.0,0.6),
+    breaks = seq(0.0,0.6, by=0.15)
+  )+
+  labs(x=expression(R^2))+
+  theme_bw()+
+  ggtitle("R²")
+
+p_rho <- ggplot(filter(df, stat=="rho"), aes(value, colour=prior))+
+  geom_density()+
+  scale_x_continuous(
+    limits = c(0,2.5),
+    breaks = seq(0,2.5, by=0.5)
+  )+
+  labs(x=expression(rho))+
+  theme_bw()+
+  ggtitle("Spatial range")
+
+# then stitch them side by side
+combined <- (p_W | p_RE) / (p_R2 | p_rho) + plot_layout(guides="collect")
+ggsave(filename = file.path(out_dir, "Figure4_posterior1.png"), combined, width=10, height=6)
 
 # Export the posterior samples to a CSV file
 write.csv(
-    df_unnested,
+    gambia_df,
     file = file.path(out_dir, "posterior_samples_gambia.csv"),
     row.names = FALSE
 )

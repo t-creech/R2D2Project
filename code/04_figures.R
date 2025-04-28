@@ -490,16 +490,8 @@ write.csv(
 res_path <- file.path(breast_tumors, paste0("breast_cancer_results_", seed, ".rds"))
 results  <- readRDS(res_path)
 
-#Make the table
-table3 <- results %>%
-  group_by(prior) %>%
-  summarise(
-    BS    = mean(BS),
-    BS_SE = sd(BS)  / sqrt(n()),
-    BCE   = mean(BCE),
-    BCE_SE= sd(BCE) / sqrt(n())
-  ) %>%
-  rename(Method = prior)
+table3 <- bind_rows(results, .id = "Method") %>% 
+  rename(prior = Method)
 
 # 3) Save the table to a CSV file
 write.csv(

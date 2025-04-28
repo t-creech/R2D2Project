@@ -18,27 +18,17 @@ if (!requireNamespace("patchwork", quietly = TRUE)) {
   install.packages("patchwork", repos = "https://cloud.r-project.org")
 }
 
-# Install horseshoe, tidyverse and Matrix package if not already installed
+# Install Horseshoe if not already installed
 if (!requireNamespace("horseshoe", quietly = TRUE)) 
     install.packages("horseshoe", repos = "https://cloud.r-project.org")
-if (!requireNamespace("tidyverse", quietly = TRUE)) 
-    install.packages("tidyverse", repos = "https://cloud.r-project.org")
+
+# Install Matrix package if not already installed
 if (!requireNamespace("Matrix", quietly = TRUE)) 
     install.packages("Matrix", repos = "https://cloud.r-project.org")
+
+# Install brms package if not already installed
 if (!requireNamespace("brms", quietly = TRUE)) 
     install.packages("brms", repos = "https://cloud.r-project.org")
-
-
-# Install horseshoe, tidyverse and Matrix package if not already installed
-if (!requireNamespace("horseshoe", quietly = TRUE)) 
-    install.packages("horseshoe", repos = "https://cloud.r-project.org")
-if (!requireNamespace("tidyverse", quietly = TRUE)) 
-    install.packages("tidyverse", repos = "https://cloud.r-project.org")
-if (!requireNamespace("Matrix", quietly = TRUE)) 
-    install.packages("Matrix", repos = "https://cloud.r-project.org")
-if (!requireNamespace("brms", quietly = TRUE)) 
-    install.packages("brms", repos = "https://cloud.r-project.org")
-
 
 # Install dplyr package if not already installed
 if (!requireNamespace("dplyr", quietly = TRUE)) {

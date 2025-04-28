@@ -6,3 +6,5 @@ Rscript code/01_prior_construction.R
 Rscript code/02_gambia.R data/gambia_data.csv $N_SEED results/gambia
 Rscript code/03_breast_cancer.R data/breast_tumors_mixOmics.csv $N_SEED results/breast_cancer
 Rscript code/04_figures.R results/gambia results/breast_cancer $N_SEED figures/PaperFigures
+Rscript code/05_gambia2_supp.R data/gambia_data.csv $N_SEED results/gambia2
+Rscript code/06_figs_supp.R results/gambia2 results/breast_cancer $N_SEED figures/SuppFigures

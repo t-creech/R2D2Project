@@ -54,7 +54,11 @@ exactly the same as the one in the paper, but it is very similar with values bei
 that MCMC algorithms are stochastic and can vary between runs. Additionally, the paper ran their MCMC analysis for 105,000 iterations with a burn-in of 5,000, 
 while we ran our MCMC analysis for 40,000 iterations with a burn-in of 2,500. We decided to run our MCMC analysis for a shorter number of iterations and burn-in because 
 due to computational constraints as 105,000 samples would have had very long computational time. Between the stochastic nature of the MCMC algorithm and the difference in the 
-number of iterations, we believe that our MCMC analysis is correct and any discrepancies are due to these reasons.
+number of iterations, we believe that our MCMC analysis is correct and any discrepancies are due to these reasons. Additionally, the code on the authors Github used a hard-coded
+variable for max distace of R. Since the value was hard coded and not drawn from the data, we were not sure how to reproduce this R distance. Therefore, we hard-coded this R
+in our code as well. We believe it is possible that the code that was used to generate the figures in the paper was not the exact same as that on the Github of the authors
+and that this R was not originally hard-coded, but the numbers with the hard coded R were close enough that we decided to carry forward the hard coded R of the paper's code,
+and save the dynamic R for a supplemental figure.
 
 # Figure 4:
 Figure 4 shows the posterior distributions of R2, W, random effect variance, and spatial range for the Gambia dataset. Overall, our Figure 4 very closely matches the Figure 4
@@ -66,3 +70,23 @@ paper. This is expected as we used considerably less iteration in of MCMC algori
 to the distinctions we are seeing in the posterior for R2. We noticed that the transformation from W to R2 is very senstitive to changes in W, so we are assuming that with these
 lower number of iterations, our some of our MCMC samples for W had not fully converged and were still a little futher off in the right tail of the distribution than what the
 author's showed. This is the likely cause of the wider and more skewed density.
+
+# Supplemental Figures:
+Additionally, we ran the JAGS MCMC analysis with a dynamic R distance that was determined by the data. This was done by taking the maximum distance between all of the 
+coordinates in the dataset. Additionally, in the authors' code on their Github, they worked with the scaled coordinates of the data instead of the original coordinates.
+Finally, we noticed that the precision on the fixed effects of our betaj were not specified correctly in the authors' code. JAGS requires that for the dnorm distribution, 
+the precision is specified instead of the variance. In the authors' code, they specified the variance instead of the precision. We corrected this in our code and therefore
+the precision of the fixed effects is different than that of the authors in the supplemental figures. We believe that this is a minor difference and does not affect the 
+overall results of the MCMC analysis. We made these three changes to the authors' code for analysis of the gambia dataset and ran the JAGS MCMC analysis again. 
+The results of this analysis are shown in the supplemental Figure 4 and Table 2. 
+
+# Supplemental Figure 4:
+The shape of the posterior distributions of R2, W, and random effect variance for the Gambia dataset are very similar to those in Figure 4. The only large difference is the 
+distribution for spacial range using the dynamic R distance and calculating this distance from the unscaled coordinates, greatly widens the distribution, and shifts it to the right.
+This is expected as the distance between the coordinates is much larger than that of the scaled coordinates. We also saw this leak into the posterior distribution of the remaining parameters.
+It appears that this substantially widened posterior for the spatial range also caused the posterior for W, R2, and random effects to be wider as wel, but not to the same magnitude.
+
+# Supplemental Table 2:
+Supplemental Table 2 shows the statistics for the posterior samples for R2, W, random effect variance, and spatial range, that were determined by the JAGS MCMC analysis with the 
+dynamic R distance, unscaled coordinates, and corrected precision. The table is not exactly the same as the one in Table 2, similiar in range but quite different from the oridignal Table 2.
+We observe much wider posterior distributions for all of the parameters, so we see much higher standard deviations and higher means since much of the density is shifted to the right.

@@ -1,4 +1,4 @@
-# 02_gambia.R  –  Performs MH sampling to estimate the posteriors from Gambia data
+# 02_gambia.R  –  Performs MCMC sampling to estimate the posteriors from Gambia data
 # Goal: This script reads the gambia dataset and recreates the MCMC sampling from the paper
 
 # Workflow

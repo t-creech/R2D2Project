@@ -60,3 +60,18 @@ if (!requireNamespace("rjags", quietly = TRUE)) {
 if (!requireNamespace("coda", quietly = TRUE)) {
   install.packages("coda", repos = "https://cloud.r-project.org")
 }
+
+# Install rstan package if not already installed
+if (!requireNamespace("rstan", quietly = TRUE)) {
+  install.packages("rstan", repos = "https://cloud.r-project.org")
+}
+
+# Install foreach package if not already installed
+if (!requireNamespace("foreach", quietly = TRUE)) {
+  install.packages("foreach", repos = "https://cloud.r-project.org")
+}
+
+# Install doParallel package if not already installed
+if (!requireNamespace("doParallel", quietly = TRUE)) {
+  install.packages("doParallel", repos = "https://cloud.r-project.org")
+}

@@ -92,11 +92,11 @@ run_r2d2_logistic_mcmc <- function(X, y, gbp_params, n_iter = 2000, burn_in = 20
 }
 
 # --- Efficient settings for development/testing ---
-n_repeats <- 50  # Decrease to 5 for testing 
-brms_iter <- 2000  # Decrease to 1000 for testing
-brms_chains <- 2   # Use 1 for test runs
-mcmc_iter <- 11000  # Decrease to 2000 for testing
-mcmc_burn <- 1000   # Decrease to 200 for testing
+n_repeats <- 50      # Use 50 for final results
+brms_iter <- 2000   # Use 2000 for final results
+brms_chains <- 2    # Use 2 for final results
+mcmc_iter <- 11000   # Use 11000 for final results
+mcmc_burn <- 1000    # Use 1000 for final results
 
 results <- list()
 
@@ -124,7 +124,9 @@ for (i in 1:n_repeats) {
   beta_post_mean <- as.numeric(fixef(fit)[-1, "Estimate"])
   beta0_post_mean <- fixef(fit)[1, "Estimate"]
   # Compute probabilities (plogis) for BCE!
-  y_pred <- plogis(as.numeric(X_test_std %*% beta_post_mean + beta0_post_mean))
+  linpred <- as.numeric(X_test_std %*% beta_post_mean + beta0_post_mean)
+  y_pred <- plogis(linpred)
+  cat(sprintf("Horseshoe repeat %d: y_pred range = [%.4f, %.4f]\n", i, min(y_pred), max(y_pred)))
   bs_vec[i] <- brier_score(y_test, y_pred)
   bce_vec[i] <- binary_cross_entropy(y_test, y_pred)
 }
@@ -164,7 +166,9 @@ for (prior_name in names(r2d2_priors)) {
     )
     beta_post_mean <- colMeans(mcmc$beta)
     beta0_post_mean <- mean(mcmc$beta0)
-    y_pred <- plogis(as.numeric(X_test_std %*% beta_post_mean + beta0_post_mean))
+    linpred <- as.numeric(X_test_std %*% beta_post_mean + beta0_post_mean)
+    y_pred <- plogis(linpred)
+    cat(sprintf("%s repeat %d: y_pred range = [%.4f, %.4f]\n", prior_name, i, min(y_pred), max(y_pred)))
     bs_vec[i] <- brier_score(y_test, y_pred)
     bce_vec[i] <- binary_cross_entropy(y_test, y_pred)
   }

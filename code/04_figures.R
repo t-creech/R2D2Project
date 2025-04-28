@@ -20,6 +20,7 @@
 # Load required libraries
 library(ggplot2)
 library(patchwork)
+library(tidyverse)
 
 # Pull in the functions from the previous scripts
 source("code/01_prior_construction.R")
@@ -346,16 +347,17 @@ gambia_df <- data.frame()
 # Determine the number of gambia runs
 gambia_runs <- length(list.files(gambia, pattern = "gambia_"))
 seed <- 1234
-a <- c(0.5, 1, 1, 4, 4)
-b <- c(0.5, 1, 4, 1, 4)
+as <- c(0.5, 1, 1, 4, 4)
+bs <- c(0.5, 1, 4, 1, 4)
 
-for i in (1:gambia_runs){
+for (i in 1:gambia_runs){
     # Load the MCMC samples
-    mcmc_samples <- readRDS(file.path(gambia, paste0("gambia_", a[i], "_", b[i], "_", seed, ".rds")))
+    mcmc_samples <- readRDS(file.path(gambia, paste0("gambia_", as[i], "_", bs[i], "_", seed, ".rds")))
   
     # Extract the posterior samples for W
     w_samples <- mcmc_samples$W_draws
     rho_samples <- mcmc_samples$rho_draws
+    phi2_samples <- mcmc_samples$phi2_draws
     a <- mcmc_samples$a
     b <- mcmc_samples$b
   
@@ -363,6 +365,7 @@ for i in (1:gambia_runs){
     temp_df <- data.frame(
         W = w_samples,
         rho = rho_samples,
+        phi2 = phi2_samples,
         a = a,
         b = b
     )
@@ -371,19 +374,78 @@ for i in (1:gambia_runs){
     gambia_df <- rbind(gambia_df, temp_df)
 }
 
-# Create a new column for R^2
-gambia_df$R2 <- W_to_R2(gambia_df$W, beta0 = -0.059, family = "binomial")
+# Create a new column for R^2 and RE variance
+beta0_init <- -0.59
+gambia_df <- gambia_df %>%
+  mutate(
+    R2 = sapply(W, function(w) 
+      W_to_R2(w, beta0 = beta0_init, family = "binomial")
+    ),
+    RE_Var = W * phi2
+  )
 
-# Create a new column for RE Var
-gambia_df$RE_Var <- gambia_df$W * gambia_df$rho
+# Create a new columns for the prior name
+gambia_df$prior <- paste0("R2D2:a=", gambia_df$a, ",b=", gambia_df$b)
 
-# Create the plot of posterior distributions
+# Unnest the data frame
+df_unnested <- gambia_df %>% unnest(cols = c(W, RE_Var, R2, rho))
 
+df_long <- df_unnested %>%
+  pivot_longer(
+    cols      = c(W, RE_Var, R2, rho),
+    names_to  = "stat",
+    values_to = "value"
+  ) %>%
+  mutate(
+    stat = recode(stat,
+      W     = "W",
+      RE_Var = "RE Var",
+      R2    = "R2",
+      rho   = "rho"
+    ),
+    prior = factor(prior, levels = c(
+      "R2D2:a=0.5,b=0.5",
+      "R2D2:a=1,b=1",
+      "R2D2:a=1,b=4",
+      "R2D2:a=4,b=1",
+      "R2D2:a=4,b=4"
+    ))
+  )
+
+# Plot the posterior distributions
+gg <- ggplot(df_long, aes(x = value, colour = prior)) +
+  geom_density(size = 1) +
+  facet_wrap(~ stat, scales = "free", nrow = 2) +
+  scale_colour_manual(
+    name   = "Prior",
+    values = c(
+      "R2D2:a=0.5,b=0.5" = "green",
+      "R2D2:a=1,b=1"     = "purple",
+      "R2D2:a=1,b=4"     = "orange",
+      "R2D2:a=4,b=1"     = "yellow",
+      "R2D2:a=4,b=4"     = "brown"
+    )
+  ) +
+  labs(x = NULL, y = "Density") +
+  theme_bw(base_size = 14) +
+  theme(
+    strip.background   = element_blank(),
+    strip.text         = element_text(face = "bold", size = 16),
+    legend.position    = "bottom",
+    legend.title.align = 0.5
+  )
 
 # Save to file
 ggsave(
   filename = file.path(out_dir, "Figure4_posterior.png"),
   plot     = gg,
   width    = 10,
-  height   = 4
+  height   = 5
+)
+
+# Export the posterior samples to a CSV file
+write.csv(
+    df_unnested,
+    file = file.path(out_dir, "posterior_samples_gambia.csv"),
+    row.names = FALSE
 )

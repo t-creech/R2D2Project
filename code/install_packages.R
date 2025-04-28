@@ -17,3 +17,18 @@ if (!requireNamespace("stats", quietly = TRUE)) {
 if (!requireNamespace("patchwork", quietly = TRUE)) {
   install.packages("patchwork", repos = "https://cloud.r-project.org")
 }
+
+# Install dplyr package if not already installed
+if (!requireNamespace("dplyr", quietly = TRUE)) {
+  install.packages("dplyr", repos = "https://cloud.r-project.org")
+}
+
+# Install MASS package if not already installed
+if (!requireNamespace("MASS", quietly = TRUE)) {
+  install.packages("MASS", repos = "https://cloud.r-project.org")
+}
+
+# Install BayesLogit package if not already installed
+if (!requireNamespace("BayesLogit", quietly = TRUE)) {
+  install.packages("BayesLogit", repos = "https://cloud.r-project.org")
+}

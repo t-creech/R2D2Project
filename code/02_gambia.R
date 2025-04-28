@@ -19,6 +19,9 @@
 # Pull in the functions from the previous scripts
 source("code/01_prior_construction.R")
 
+# Load required libraries
+library(numDeriv)
+
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) != 3) {
   stop("Usage: Rscript 02_gambia.R <gambia_data> <seed> <out_dir>")
@@ -34,8 +37,7 @@ set.seed(seed)
 # Define functions needed in the script
 # Logit link log-likelihood
 logit_ll <- function(y, eta){sum( y*eta - log1p(exp(eta)))}
-# Tranform W to V
-W_from_V <- function(V, params) {(V/(1-V))^(1/params[3]) * params[4]}
+
 # Log of prior density functions based on the paper
 log_prior_beta <- function(beta, W, phi1, p) {-0.5 * p * log(2*pi*W*phi1/p) - 0.5 * (p/(W*phi1)) * sum(beta^2)}
 log_prior_beta0 <- function(beta0, mu0, tau2) {-0.5 * ((beta0 - mu0)^2) / tau2 - 0.5 * log(2 * pi * tau2)}
@@ -126,7 +128,7 @@ for (i in 1:length(a_list)){
     # Create storage for the parameters
     draws <- list(beta = matrix(NA, iterations, p),
                 beta0 = numeric(iterations),
-                V = numeric(iterations),
+                W = numeric(iterations),
                 phi = matrix(NA, iterations, 2),
                 rho = numeric(iterations),
                 u = matrix(NA, iterations, L))
@@ -134,7 +136,7 @@ for (i in 1:length(a_list)){
     # Set the initial values
     beta <- rep(0, p)
     beta0 <- 0
-    V <- 0.5
+    W <- 1
     phi <- c(0.5, 0.5)
     rho <- runif(1, 0, 2 * r)
     Cmatrix <- exp(-D_mat / rho)
@@ -143,13 +145,12 @@ for (i in 1:length(a_list)){
     # Set proposal standard deviations
     sd_beta <- rep(0.01, p)
     sd_beta0 <- 0.05
-    sd_logV <- 0.2
+    sd_logW <- 0.1
     sd_logphi <- rep(0.2, 2)
     sd_logrho <- 0.05
 
     # Function to calculate the log posterior
-    log_post <- function(beta, beta0, mu0, tau2, u, V, phi, rho, params, X, Y, X.loc, s.ind, r, D_mat) {
-    W <- W_from_V(V,params)
+    log_post <- function(beta, beta0, mu0, tau2, u, W, phi, rho, params, X, Y, X.loc, s.ind, r, D_mat) {
     C <- exp(-D_mat/rho)
     eta <- beta0 + X %*% beta + u[s.ind]
     p <- length(beta)
@@ -164,7 +165,8 @@ for (i in 1:length(a_list)){
     }
 
     # Initialize the log posterior
-    cur_lp <- log_post(beta, beta0, mu0 = 0, tau2 = 3, u, V, phi, rho, params, X, Y, X.loc, s.ind, r, D_mat)
+    cur_raw_lp <- log_post(beta, beta0, mu0 = 0, tau2 = 3, u, W, phi, rho, params, X, Y, X.loc, s.ind, r, D_mat)
+    cur_full_lp <- cur_raw_lp
 
     # Performing iterations of algorithm using adaptive M-H
     for (i in 2:iterations) {
@@ -172,66 +174,82 @@ for (i in 1:length(a_list)){
         for(j in 1:p){
             prop <- beta
             prop[j] <- prop[j] + rnorm(1,0,sd_beta[j])
-            lp_prop <- log_post(prop, beta0, mu0 = 0, tau2 = 3, u, V, phi, rho, params, X, Y, X.loc, s.ind, r, D_mat)
-            if(runif(1)<exp(lp_prop - cur_lp)){
-            beta <- prop
-            cur_lp <- lp_prop
+            prop_raw_lp <- log_post(prop, beta0, mu0 = 0, tau2 = 3, u, W, phi, rho, params, X, Y, X.loc, s.ind, r, D_mat)
+            if(runif(1)<exp(prop_raw_lp - cur_full_lp)){
+                beta <- prop
+                cur_full_lp <- prop_raw_lp
+                cur_raw_lp <- prop_raw_lp
             }
         }
         # Update beta0
         prop_b0 <- beta0 + rnorm(1,0,sd_beta0)
-        lp_prop <- log_post(beta, prop_b0, mu0 = 0, tau2 = 3, u, V, phi, rho, params, X, Y, X.loc, s.ind, r, D_mat)
-        if(runif(1)<exp(lp_prop - cur_lp)){
+        prop_raw_lp <- log_post(beta, prop_b0, mu0 = 0, tau2 = 3, u, W, phi, rho, params, X, Y, X.loc, s.ind, r, D_mat)
+        if(runif(1)<exp(prop_raw_lp - cur_full_lp)){
             beta0 <- prop_b0
-            cur_lp <- lp_prop
+            cur_full_lp <- prop_raw_lp
+            cur_raw_lp <- prop_raw_lp
         }
-        # Update V
-        prop_logitV <- qlogis(V) + rnorm(1, 0, sd_logV)
-        prop_V <- plogis(prop_logitV)
-        lp_prop <- log_post(beta, beta0, mu0 = 0, tau2 = 3, u, prop_V, phi, rho, params, X, Y, X.loc, s.ind, r, D_mat) + sum(log(prop_V) + log(1-prop_V))
-        if(runif(1)<exp(lp_prop-cur_lp)){
-            V <- prop_V
-            cur_lp <- lp_prop 
+        # Update W
+        prop_logW <- log(W) + rnorm(1, 0, sd_logW)
+        prop_W <- exp(prop_logW)
+        prop_raw_lp <- log_post(beta, beta0, mu0 = 0, tau2 = 3, u, prop_W, phi, rho, params, X, Y, X.loc, s.ind, r, D_mat)
+        prop_jacobian <- log(prop_W)
+        cur_jacobian <- log(W)
+        prop_full_lp <- prop_raw_lp + prop_jacobian
+        cur_full_lp_temp <- cur_raw_lp + cur_jacobian
+        if(runif(1)<exp(prop_full_lp - cur_full_lp_temp)){
+            W <- prop_W
+            cur_raw_lp <- prop_raw_lp
+            cur_full_lp <- prop_full_lp
         }
         # Update phi
         logit_phi <- qlogis(phi)
         prop_logit <- logit_phi + rnorm(2,0,sd_logphi)
-        prop_phi   <- plogis(prop_logit)
-        prop_phi   <- prop_phi / sum(prop_phi)
-        lp_prop <- log_post(beta, beta0, mu0 = 0, tau2 = 3, u, V, prop_phi, rho, params, X, Y, X.loc, s.ind, r, D_mat) + sum(log(prop_phi) + log(1-prop_phi))
-        if(runif(1)<exp(lp_prop-cur_lp)){
-            phi<-prop_phi
-            cur_lp<-lp_prop 
+        prop_phi <- plogis(prop_logit)
+        prop_phi <- prop_phi / sum(prop_phi)
+        prop_raw_lp <- log_post(beta, beta0, mu0 = 0, tau2 = 3, u, W, prop_phi, rho, params, X, Y, X.loc, s.ind, r, D_mat)
+        prop_jacobian <- sum(log(prop_phi)) + sum(log(1-prop_phi))
+        cur_jacobian <- sum(log(phi)) + sum(log(1-phi))
+        prop_full_lp <- prop_raw_lp + prop_jacobian
+        if(runif(1)<exp(prop_full_lp - (cur_raw_lp + cur_jacobian))){
+            phi <- prop_phi
+            cur_raw_lp <- prop_raw_lp
+            cur_full_lp <- prop_full_lp
         }
         # Update rho
         prop_logrho <- log(rho) + rnorm(1,0,sd_logrho)
         prop_rho <- exp(prop_logrho)
-        lp_prop <- log_post(beta, beta0, mu0 = 0, tau2 = 3, u, V, phi, prop_rho, params, X, Y, X.loc, s.ind, r, D_mat) + log(prop_rho)
-        if(runif(1)<exp(lp_prop-cur_lp)){
+        prop_raw_lp <- log_post(beta, beta0, mu0 = 0, tau2 = 3, u, W, phi, prop_rho, params, X, Y, X.loc, s.ind, r, D_mat)
+        prop_jacobian <- log(prop_rho)
+        cur_jacobian <- log(rho)
+        prop_full_lp <- prop_raw_lp + prop_jacobian
+        cur_full_lp_temp <- cur_raw_lp + cur_jacobian
+        if(runif(1)<exp(prop_full_lp - cur_full_lp_temp)){
             rho<-prop_rho
-            cur_lp<-lp_prop 
+            cur_raw_lp <- prop_raw_lp
+            cur_full_lp <- prop_full_lp
         }
         # Update u
         C <- exp(-D_mat/rho)
-        W <- W_from_V(V,params)
         Sigma_a <- W * phi[2] * C
         Q <- solve(Sigma_a)
-        z_vec   <- Y - 0.5 - (beta0 + X%*%beta)
+        z_vec <- Y - 0.5 - (beta0 + X%*%beta)
 
         # Build vector of summed residuals by village
         g <- rowsum(z_vec, s.ind, reorder = FALSE)
 
         # Posterior precision and mean
-        Prec <- Q + diag(as.numeric(table(s.ind)))
-        cholP <- chol(Prec)
-        mean_u <- solve(Prec, g)
-        u <- mean_u + backsolve(cholP, rnorm(L))
-        cur_lp <- log_post(beta, beta0, mu0 = 0, tau2 = 3, u, V, phi, rho, params, X, Y, X.loc, s.ind, r, D_mat)
+        Gamma <- rowsum(Y-0.5, s.ind)
+        Prec <- Q + t(G)%*%Omega%*%G
+        mean_u <- solve(Prec, Gamma)
+        u <- mean_u + backsolve(chol(Prec), rnorm(L))
+        cur_raw_lp <- log_post(beta, beta0, mu0 = 0, tau2 = 3, u, W, phi, rho, params, X, Y, X.loc, s.ind, r, D_mat)
+        cur_full_lp <- cur_raw_lp
 
         # Store the samples
         draws$beta[i, ] <- beta
         draws$beta0[i] <- beta0
-        draws$V[i] <- V
+        draws$W[i] <- W
         draws$phi[i, ] <- phi
         draws$rho[i] <- rho
         draws$u[i, ] <- u
@@ -240,10 +258,11 @@ for (i in 1:length(a_list)){
 
     # Remove burn-in samples
     keep <- (burn_in+1):iterations
-    post_beta  <- draws$beta[keep,]
+    post_beta <- draws$beta[keep,]
     post_beta0 <- draws$beta0[keep]
-    post_W     <- W_from_V(draws$V[keep], params)
-    post_rho   <- draws$rho [keep]
+    post_W <- draws$W[keep]
+    post_rho <- draws$rho [keep]
+    post_phi2 <- draws$phi[keep, 2]
 
     # Save the posterior samples to file
     outfile <- file.path(out_dir, paste0("gambia_", a, "_", b, "_", seed, ".rds"))
@@ -251,6 +270,7 @@ for (i in 1:length(a_list)){
                 beta0_draws = post_beta0,
                 W_draws = post_W,
                 rho_draws = post_rho,
+                phi2_draws = post_phi2,
                 seed = seed,
                 a = a,
                 b = b),

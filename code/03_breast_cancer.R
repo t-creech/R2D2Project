@@ -46,14 +46,14 @@ for (j in 1:ncol(X)) {
 # Performance metrics
 brier_score <- function(y_true, y_pred) mean((y_true - y_pred)^2)
 binary_cross_entropy <- function(y_true, y_pred) {
+  # y_pred must be probabilities in (0,1)
   eps <- 1e-15
   y_pred <- pmin(pmax(y_pred, eps), 1 - eps)
   -mean(y_true * log(y_pred) + (1 - y_true) * log(1 - y_pred))
 }
 
-# --------- Minimal MCMC Sampler for Logistic Regression ---------
-run_r2d2_logistic_mcmc <- function(X, y, gbp_params, n_iter = 11000, burn_in = 1000) {
-  # Minimal Metropolis-Hastings sampler for logistic regression with normal prior
+# Efficient, minimal MCMC Sampler for Logistic Regression
+run_r2d2_logistic_mcmc <- function(X, y, gbp_params, n_iter = 2000, burn_in = 200) {
   n <- nrow(X)
   p <- ncol(X)
   beta <- matrix(0, nrow = n_iter, ncol = p)
@@ -66,22 +66,17 @@ run_r2d2_logistic_mcmc <- function(X, y, gbp_params, n_iter = 11000, burn_in = 1
   } else {
     tau2 <- 1
   }
-  # Initialize
   beta_curr <- rep(0, p)
   beta0_curr <- 0
   for (iter in 1:n_iter) {
-    # Propose new beta and beta0
     beta_prop <- beta_curr + rnorm(p, 0, 0.05)
     beta0_prop <- beta0_curr + rnorm(1, 0, 0.05)
-    # Log-likelihoods
     eta_curr <- as.numeric(X %*% beta_curr + beta0_curr)
     eta_prop <- as.numeric(X %*% beta_prop + beta0_prop)
     loglike_curr <- sum(y * eta_curr - log1p(exp(eta_curr)))
     loglike_prop <- sum(y * eta_prop - log1p(exp(eta_prop)))
-    # Log-priors (Normal)
     logprior_curr <- sum(dnorm(beta_curr, 0, sqrt(tau2), log=TRUE)) + dnorm(beta0_curr, 0, 10, log=TRUE)
     logprior_prop <- sum(dnorm(beta_prop, 0, sqrt(tau2), log=TRUE)) + dnorm(beta0_prop, 0, 10, log=TRUE)
-    # MH ratio
     log_alpha <- (loglike_prop + logprior_prop) - (loglike_curr + logprior_curr)
     if (log(runif(1)) < log_alpha) {
       beta_curr <- beta_prop
@@ -95,9 +90,14 @@ run_r2d2_logistic_mcmc <- function(X, y, gbp_params, n_iter = 11000, burn_in = 1
   beta0 <- beta0[(burn_in+1):n_iter]
   return(list(beta = beta, beta0 = beta0))
 }
-# ---------------------------------------------------------------
 
-n_repeats <- 50
+# --- Efficient settings for development/testing ---
+n_repeats <- 50  # Decrease to 5 for testing 
+brms_iter <- 2000  # Decrease to 1000 for testing
+brms_chains <- 2   # Use 1 for test runs
+mcmc_iter <- 11000  # Decrease to 2000 for testing
+mcmc_burn <- 1000   # Decrease to 200 for testing
+
 results <- list()
 
 # ---- HORSESHOE PRIOR (using brms) ----
@@ -114,16 +114,16 @@ for (i in 1:n_repeats) {
   X_train_std <- scale(X_train, center = mu, scale = sd)
   X_test_std <- scale(X_test, center = mu, scale = sd)
   train_df <- data.frame(Y = y_train, X_train_std)
-  # brms can be slow; reduce chains/iters for testing, increase for final results
   fit <- brm(
     formula = Y ~ .,
     data = train_df,
     family = bernoulli(),
     prior = prior(horseshoe(), class = "b"),
-    chains = 2, iter = 2000, refresh = 0, silent = 2
+    chains = brms_chains, iter = brms_iter, refresh = 0, silent = 2
   )
   beta_post_mean <- as.numeric(fixef(fit)[-1, "Estimate"])
   beta0_post_mean <- fixef(fit)[1, "Estimate"]
+  # Compute probabilities (plogis) for BCE!
   y_pred <- plogis(as.numeric(X_test_std %*% beta_post_mean + beta0_post_mean))
   bs_vec[i] <- brier_score(y_test, y_pred)
   bce_vec[i] <- binary_cross_entropy(y_test, y_pred)
@@ -134,7 +134,6 @@ results[["Horseshoe"]] <- list(
 )
 
 # ---- R2D2 PRIORS (GBP approximation, custom MCMC) ----
-# Define the R2D2 prior settings as in Table 3
 r2d2_priors <- list(
   "Beta(1,5)"  = list(a = 1, b = 5),
   "Beta(1,10)" = list(a = 1, b = 10),
@@ -156,14 +155,12 @@ for (prior_name in names(r2d2_priors)) {
     sd <- apply(X_train, 2, sd)
     X_train_std <- scale(X_train, center = mu, scale = sd)
     X_test_std <- scale(X_test, center = mu, scale = sd)
-    # GBP prior parameters for W
     beta0_init <- qlogis(mean(y_train))
     gbp_params <- match_gbp(prior$a, prior$b, beta0 = beta0_init, family = "binomial")
-    # Custom MCMC for logistic regression with GBP prior on W and Normal priors on beta
     mcmc <- run_r2d2_logistic_mcmc(
       X = X_train_std, y = y_train,
       gbp_params = gbp_params,
-      n_iter = 11000, burn_in = 1000
+      n_iter = mcmc_iter, burn_in = mcmc_burn
     )
     beta_post_mean <- colMeans(mcmc$beta)
     beta0_post_mean <- mean(mcmc$beta0)

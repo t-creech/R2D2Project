@@ -88,7 +88,7 @@ dw <- function(w, a = 1, b = 1, b0 = 0, family, delta = 1e-4){
 linear_gbp_params <- function(a, b, beta0, family){
     mu1 <- switch(family,
                 gaussian = 1,
-                poisson  = exp(beta0),
+                poisson = exp(beta0),
                 binomial = plogis(beta0)*(1-plogis(beta0)))
     sigma2 <- mean(var_fun(beta0, family))
     s2 <- sigma2 / mu1^2
@@ -117,7 +117,7 @@ match_gbp <- function(a, b, beta0, lambda = 0.25, family){
         penalty <- lambda * ((logparam[1] - log(a))^2 + (logparam[2] - log(b))^2 + (logparam[3] - log(1))^2 + (logparam[4] - log(1))^2)
         return(divergence + penalty)
     }
-    opt <- optim(par = c(log(a), log(b), log(1), log(1)), fn  = chi2, method = "Nelder-Mead")
+    opt <- optim(par = c(log(a), log(b), log(1), log(1)), fn = chi2, method = "Nelder-Mead")
     vals <- exp(opt$par)
     return(setNames(vals, c("a_star", "b_star", "c_star", "d_star")))
 }

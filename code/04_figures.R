@@ -44,8 +44,8 @@ b <- c(1, 4)
 family <- c("gaussian", "poisson")
 # Create a data frame for parameter combinations
 priors <- expand.grid(
-    a      = a,
-    b      = b,
+    a = a,
+    b = b,
     family = family,
     stringsAsFactors = FALSE
 )
@@ -86,7 +86,7 @@ gg <- ggplot(prior_df, aes(x = W, y = Density, colour = interaction(a, b))) +
   ) +
   scale_colour_brewer(
     palette = "Set2",
-    name   = "(a, b)",
+    name = "(a, b)",
     labels = c("1,1", "1,4", "4,1", "4,4")
   ) +
   labs(
@@ -95,25 +95,25 @@ gg <- ggplot(prior_df, aes(x = W, y = Density, colour = interaction(a, b))) +
   ) +
   theme_bw(base_size = 14) +
   theme(
-    strip.background    = element_blank(),
-    strip.text          = element_text(face = "bold", size = 16),
-    legend.position     = "bottom",
-    legend.title.align  = 0.5
+    strip.background = element_blank(),
+    strip.text = element_text(face = "bold", size = 16),
+    legend.position = "bottom",
+    legend.title.align = 0.5
   )
 
 # Save to file
 ggsave(
   filename = file.path(out_dir, "Figure1_priors.png"),
-  plot     = gg,
-  width    = 10,
-  height   = 4
+  plot = gg,
+  width = 10,
+  height = 4
 )
 
 ## Figure 2: Comparison of the priors for
 # Create a data frams for each of the needed prior distributions
 priors <- data.frame(
-    a      = c(1, 1, 4),
-    b      = c(1, 4, 1),
+    a = c(1, 1, 4),
+    b = c(1, 4, 1),
     family = c("poisson"),
     stringsAsFactors = FALSE
 )
@@ -188,14 +188,14 @@ gg <- ggplot(prior_df, aes(x = W, y = Density, colour = Method, linetype = Metho
   facet_wrap(~ combo, nrow = 1, scales = "free_y") +
   scale_colour_brewer(
     palette = "Set2",
-    name    = "Method"
+    name = "Method"
   ) +
   scale_linetype_manual(
-    name   = "Method",
+    name = "Method",
     values = c(
-      "Exact"                   = "solid",
-      "Generalized Beta Prime"  = "dashed",
-      "Linear Approximation"    = "solid"
+      "Exact" = "solid",
+      "Generalized Beta Prime" = "dashed",
+      "Linear Approximation" = "solid"
     )
   ) +
   labs(
@@ -204,17 +204,17 @@ gg <- ggplot(prior_df, aes(x = W, y = Density, colour = Method, linetype = Metho
   ) +
   theme_bw(base_size = 14) +
   theme(
-    strip.background   = element_blank(),
-    strip.text         = element_text(face = "bold", size = 16),
-    legend.position    = "bottom",
+    strip.background = element_blank(),
+    strip.text = element_text(face = "bold", size = 16),
+    legend.position = "bottom",
     legend.title.align = 0.5
   )
 
 ggsave(
   filename = file.path(out_dir, "Figure2_PriorsMethods.png"),
-  plot     = gg,
-  width    = 10,
-  height   = 4
+  plot = gg,
+  width = 10,
+  height = 4
 )
 
 ## Figure 3: Prior R^2 and global variance parameters for R2D2 prior for Gambia data
@@ -222,8 +222,8 @@ beta0 <- -0.59
 family <- "binomial"
 # Create a data frame for the prior distributions
 priors <- data.frame(
-    a      = c(0.5, 1, 1, 4, 4),
-    b      = c(0.5, 1, 4, 1, 4),
+    a = c(0.5, 1, 1, 4, 4),
+    b = c(0.5, 1, 4, 1, 4),
     family = family,
     stringsAsFactors = FALSE
 )
@@ -274,9 +274,9 @@ gg_w <- ggplot(w_prior_df, aes(x = W, y = Density, colour = interaction(a, b))) 
   labs(x = "W", y = "Prior Density") +
   theme_bw(base_size = 14) +
   theme(
-    strip.background  = element_blank(),
-    strip.text        = element_text(face = "bold", size = 16),
-    legend.position   = "bottom",
+    strip.background = element_blank(),
+    strip.text = element_text(face = "bold", size = 16),
+    legend.position = "bottom",
     legend.title.align= 0.5
   )
 
@@ -288,9 +288,9 @@ gg_r2 <- ggplot(r2_prior_df, aes(x = R2, y = Density, colour = interaction(a, b)
   labs(x = expression(R^2), y = "Prior Density") +
   theme_bw(base_size = 14) +
   theme(
-    strip.background  = element_blank(),
-    strip.text        = element_text(face = "bold", size = 16),
-    legend.position   = "bottom",
+    strip.background = element_blank(),
+    strip.text = element_text(face = "bold", size = 16),
+    legend.position = "bottom",
     legend.title.align= 0.5
   )
 
@@ -298,16 +298,16 @@ combined <- gg_r2 + gg_w + plot_layout(ncol = 2, guides = "collect") & theme(leg
 
 ggsave(
   filename = file.path(out_dir, "Figure3_side_by_side.png"),
-  plot     = combined,
-  width    = 12,
-  height   = 4
+  plot = combined,
+  width = 12,
+  height = 4
 )
 
 ## Table 1: Generalized Beta Prime Approximations for Gambia data
 # Create a data frame for the prior distributions
 gbp_df <- data.frame(
-    a      = c(1, 0.5, 1, 4, 4),
-    b      = c(4, 0.5, 1, 4, 1),
+    a = c(1, 0.5, 1, 4, 4),
+    b = c(4, 0.5, 1, 4, 1),
     stringsAsFactors = FALSE
 )
 
@@ -391,16 +391,16 @@ gambia_df$prior <- paste0("R2D2:a=", gambia_df$a, ",b=", gambia_df$b)
 # Clean up the data frame
 df_long <- gambia_df %>%
   pivot_longer(
-    cols      = c(W, RE_Var, R2, rho),
-    names_to  = "stat",
+    cols = c(W, RE_Var, R2, rho),
+    names_to = "stat",
     values_to = "value"
   ) %>%
   mutate(
     stat = recode(stat,
-      W     = "W",
+      W = "W",
       RE_Var = "RE Var",
-      R2    = "R2",
-      rho   = "rho"
+      R2 = "R2",
+      rho = "rho"
     ),
     prior = factor(prior, levels = c(
       "R2D2:a=0.5,b=0.5",
@@ -481,14 +481,14 @@ summary_wide_df <- gambia_df %>%
 # Save the summary table to a CSV file
 write.csv(
   summary_wide_df,
-  file      = file.path(out_dir, "Table2_Gambia_summary_statistics.csv"),
+  file = file.path(out_dir, "Table2_Gambia_summary_statistics.csv"),
   row.names = FALSE
 )
 
 ## Table 3: Prediction results for genomic data
 # Load the breast tumors data
 res_path <- file.path(breast_tumors, paste0("breast_cancer_results_", seed, ".rds"))
-results  <- readRDS(res_path)
+results <- readRDS(res_path)
 
 table3 <- bind_rows(results, .id = "Method") %>% 
   rename(prior = Method)
@@ -496,6 +496,6 @@ table3 <- bind_rows(results, .id = "Method") %>%
 # 3) Save the table to a CSV file
 write.csv(
   table3,
-  file      = file.path(out_dir, "Table3_BreastCancer_Prediction.csv"),
+  file = file.path(out_dir, "Table3_BreastCancer_Prediction.csv"),
   row.names = FALSE
 )

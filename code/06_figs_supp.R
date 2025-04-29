@@ -85,16 +85,16 @@ gambia_df$prior <- paste0("R2D2:a=", gambia_df$a, ",b=", gambia_df$b)
 # Clean up the data frame
 df_long <- gambia_df %>%
   pivot_longer(
-    cols      = c(W, RE_Var, R2, rho),
-    names_to  = "stat",
+    cols = c(W, RE_Var, R2, rho),
+    names_to = "stat",
     values_to = "value"
   ) %>%
   mutate(
     stat = recode(stat,
-      W     = "W",
+      W = "W",
       RE_Var = "RE Var",
-      R2    = "R2",
-      rho   = "rho"
+      R2 = "R2",
+      rho = "rho"
     ),
     prior = factor(prior, levels = c(
       "R2D2:a=0.5,b=0.5",
@@ -175,6 +175,6 @@ summary_wide_df <- gambia_df %>%
 # Save the summary table to a CSV file
 write.csv(
   summary_wide_df,
-  file      = file.path(out_dir, "Table2_Gambia_summary_statistics.csv"),
+  file = file.path(out_dir, "Table2_Gambia_summary_statistics.csv"),
   row.names = FALSE
 )

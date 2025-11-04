@@ -9,13 +9,6 @@ This private repository contains the final project for **ST502**, replicating an
 - Perform data preprocessing, simulation, and analysis as described in the paper.
 - Provide reproducible scripts and documentation for running the analysis.
 
-## Repository Structure
-
-- `code/` – R scripts implementing the models, data processing, and plotting.
-- `data/` – raw datasets or generated synthetic data.
-- `shell/` – shell scripts or command-line utilities to run workflows.
-- `reports/` – project report or notebooks summarizing findings (if included).
-
 ## Goals
 
 - Demonstrate proficiency in statistical programming with R.

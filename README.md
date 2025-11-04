@@ -11,8 +11,8 @@ This private repository contains the final project for **ST502**, replicating an
 
 ## Repository Structure
 
-- `src/` – R scripts implementing the models, data processing, and plotting.
-- `data/` – (if included) raw datasets or generated synthetic data.
+- `code/` – R scripts implementing the models, data processing, and plotting.
+- `data/` – raw datasets or generated synthetic data.
 - `shell/` – shell scripts or command-line utilities to run workflows.
 - `reports/` – project report or notebooks summarizing findings (if included).
 
